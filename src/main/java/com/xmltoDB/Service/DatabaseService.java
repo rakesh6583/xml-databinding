@@ -32,24 +32,34 @@ public class DatabaseService {
     }
 
     private Map<String, String> parseXMLAndExtractColumnNames(MultipartFile file) throws IOException, ParserConfigurationException, SAXException {
-        Map<String, String> columnNames = new LinkedHashMap<>();
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document document = builder.parse(file.getInputStream());
-        Element root = document.getDocumentElement();
-        NodeList childNodes = root.getChildNodes();
-        for (int i = 0; i < childNodes.getLength(); i++) {
-            Node node = childNodes.item(i);
-            if (node.getNodeType() == Node.ELEMENT_NODE) {
-                Element element = (Element) node;
-                String columnName = element.getTagName();
-                columnNames.put(columnName, "String");
+            Map<String, String> columnNames = new LinkedHashMap<>();
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(file.getInputStream());
+            Element root = document.getDocumentElement();
+            NodeList childNodes = root.getChildNodes();
+            for (int i = 0; i < childNodes.getLength(); i++) {
+                Node node = childNodes.item(i);
+                if (node.getNodeType() == Node.ELEMENT_NODE) {
+                    Element element = (Element) node;
+                    String tagName = element.getTagName();
+                    columnNames.put(tagName, "String");
+                    NodeList nestedNodes = element.getChildNodes();
+                    for (int j = 0; j < nestedNodes.getLength(); j++) {
+                        Node nestedNode = nestedNodes.item(j);
+                        if (nestedNode.getNodeType() == Node.ELEMENT_NODE) {
+                            Element nestedElement = (Element) nestedNode;
+                            String nestedTagName = nestedElement.getTagName();
+                            columnNames.put(nestedTagName, "String");
+                        }
+                    }
+                }
             }
+            return columnNames;
         }
-        return columnNames;
-    }
 
-    private String createTableWithColumns(Map<String, String> columnNames) {
+
+        private String createTableWithColumns(Map<String, String> columnNames) {
         String tableName = "generated_table";
         String columnsWithTypes = columnNames.entrySet().stream()
                 .map(entry -> entry.getKey() + " " + entry.getValue())
@@ -64,18 +74,28 @@ public class DatabaseService {
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document document = builder.parse(file.getInputStream());
         Element root = document.getDocumentElement();
-        NodeList authorNodes = root.getElementsByTagName("author");
-        for (int i = 0; i < authorNodes.getLength(); i++) {
-            Element authorElement = (Element) authorNodes.item(i);
-            Map<String, String> data = extractDataFromAuthorElement(authorElement, columnNames);
-            insertData(tableName, data);
+
+        // Get all child nodes of the root element
+        NodeList childNodes = root.getChildNodes();
+
+        // Iterate over child nodes
+        for (int i = 0; i < childNodes.getLength(); i++) {
+            Node node = childNodes.item(i);
+            // Check if the node is an element node
+            if (node.getNodeType() == Node.ELEMENT_NODE) {
+                Element element = (Element) node;
+                // Extract data from the current element
+                Map<String, String> data = extractDataFromAuthorElement(element, columnNames);
+                // Insert the extracted data into the database table
+                insertData(tableName, data);
+            }
         }
     }
 
     private Map<String, String> extractDataFromAuthorElement(Element authorElement, Map<String, String> columnNames) {
         Map<String, String> data = new LinkedHashMap<>();
         NodeList childNodes = authorElement.getChildNodes();
-        for (int i = 0; i < childNodes.getLength(); i++) {
+        for (int i = 0; i < childNodes.getLength();i++) {
             Node node = childNodes.item(i);
             if (node.getNodeType() == Node.ELEMENT_NODE) {
                 Element element = (Element) node;
@@ -94,5 +114,3 @@ public class DatabaseService {
         jdbcTemplate.update(insertQuery, data.values().toArray());
     }
 }
-
-
